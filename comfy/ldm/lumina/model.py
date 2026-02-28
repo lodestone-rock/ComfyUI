@@ -1164,18 +1164,20 @@ class NextDiTPixelSpace(NextDiT):
         return -img_out
 
     def forward(self, x, timesteps, context, num_tokens, attention_mask=None, **kwargs):
-        # _forward returns -x0 (negated decoder output, same convention as NextDiT).
+        # _forward returns neg_x0 = -x0 (negated decoder output).
         #
-        # ComfyUI uses CONST sampling: calculate_denoised = x - model_output * sigma
-        # We need calculate_denoised to return x0, so model_output must equal (x - x0) / sigma.
+        # Reference inference (working_inference_reference.py):
+        #   out = _forward(img, t)          # = -x0
+        #   pred = (img - out) / t          # = (img + x0) / t  [_apply_x0_residual]
+        #   img += (t_prev - t_curr) * pred # Euler step
         #
-        # _forward returns neg_x0 = -x0, so:
-        #   model_output = (x + neg_x0) / sigma  →  (x + (-x0)) / sigma  =  (x - x0) / sigma  ✓
-        # Then: x - model_output * sigma = x - (x - x0) = x0  ✓
+        # ComfyUI's Euler sampler does the same:
+        #   x_next = x + (sigma_next - sigma) * model_output
+        # So model_output must equal pred = (x - neg_x0) / t = (x - (-x0)) / t = (x + x0) / t
         neg_x0 = comfy.patcher_extension.WrapperExecutor.new_class_executor(
             self._forward,
             self,
             comfy.patcher_extension.get_all_wrappers(comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL, kwargs.get("transformer_options", {}))
         ).execute(x, timesteps, context, num_tokens, attention_mask, **kwargs)
 
-        return (x + neg_x0) / timesteps.view(-1, 1, 1, 1)
+        return (x - neg_x0) / timesteps.view(-1, 1, 1, 1)
