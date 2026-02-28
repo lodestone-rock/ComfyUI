@@ -1096,6 +1096,11 @@ class Lumina2(BaseModel):
     def __init__(self, model_config, model_type=ModelType.FLOW, device=None):
         super().__init__(model_config, model_type, device=device, unet_model=comfy.ldm.lumina.model.NextDiT)
 
+
+class ZImagePixelSpace(Lumina2):
+    def __init__(self, model_config, model_type=ModelType.FLOW, device=None):
+        super().__init__(model_config, model_type, device=device, unet_model=comfy.ldm.lumina.model.NextDiTPixelSpace)
+
     def extra_conds(self, **kwargs):
         out = super().extra_conds(**kwargs)
         attention_mask = kwargs.get("attention_mask", None)
