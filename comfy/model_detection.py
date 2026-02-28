@@ -467,28 +467,23 @@ def detect_unet_config(state_dict, key_prefix, metadata=None):
             dec_cond_key = '{}dec_net.cond_embed.weight'.format(key_prefix)
             if dec_cond_key in state_dict_keys:  # pixel-space variant
                 dit_config["image_model"] = "zimage_pixel"
-                w = state_dict[dec_cond_key]  # [patch_size^2 * decoder_hidden_size, dim]
-                dit_config["decoder_hidden_size"] = w.shape[0] // (dit_config["patch_size"] ** 2)
+                # patch_size and in_channels are derived from x_embedder:
+                #   x_embedder: Linear(patch_size * patch_size * in_channels, dim)
+                # The decoder also receives the full flat patch, so decoder_in_channels = x_embedder input dim.
+                x_emb_in = state_dict['{}x_embedder.weight'.format(key_prefix)].shape[1]
+                dec_out = state_dict['{}dec_net.final_layer.linear.weight'.format(key_prefix)].shape[0]
+                # patch_size: infer from decoder final layer output matching x_embedder input
+                # in_channels: infer from dec_net input_embedder (in_features = dec_in_ch + max_freqs^2)
+                embedder_w = state_dict['{}dec_net.input_embedder.embedder.0.weight'.format(key_prefix)]
+                dec_in_ch = dec_out  # decoder in == decoder out (same pixel space)
+                dit_config["patch_size"] = round((x_emb_in / 3) ** 0.5)  # assume RGB (in_channels=3)
+                dit_config["in_channels"] = 3
+                dit_config["decoder_in_channels"] = dec_in_ch
+                dit_config["decoder_hidden_size"] = state_dict[dec_cond_key].shape[0]
                 dit_config["decoder_num_res_blocks"] = count_blocks(
                     state_dict_keys, '{}dec_net.res_blocks.'.format(key_prefix) + '{}.'
                 )
-                dit_config["decoder_max_freqs"] = 8  # fixed in NerfEmbedder
-                dit_config["in_channels"] = w.shape[1] // dit_config["dim"] if False else \
-                    state_dict['{}x_embedder.weight'.format(key_prefix)].shape[1] // (dit_config["patch_size"] ** 2)
-                if '{}__x0__'.format(key_prefix) in state_dict_keys:
-                    dit_config["use_x0"] = True
-
-            dec_cond_key = '{}dec_net.cond_embed.weight'.format(key_prefix)
-            if dec_cond_key in state_dict_keys:  # pixel-space variant
-                dit_config["image_model"] = "zimage_pixel"
-                w = state_dict[dec_cond_key]  # [patch_size^2 * decoder_hidden_size, dim]
-                dit_config["decoder_hidden_size"] = w.shape[0] // (dit_config["patch_size"] ** 2)
-                dit_config["decoder_num_res_blocks"] = count_blocks(
-                    state_dict_keys, '{}dec_net.res_blocks.'.format(key_prefix) + '{}.'
-                )
-                dit_config["decoder_max_freqs"] = 8  # fixed in NerfEmbedder
-                dit_config["in_channels"] = w.shape[1] // dit_config["dim"] if False else \
-                    state_dict['{}x_embedder.weight'.format(key_prefix)].shape[1] // (dit_config["patch_size"] ** 2)
+                dit_config["decoder_max_freqs"] = int((embedder_w.shape[1] - dec_in_ch) ** 0.5)
                 if '{}__x0__'.format(key_prefix) in state_dict_keys:
                     dit_config["use_x0"] = True
 

@@ -1217,7 +1217,8 @@ class Lumina2(BaseModel):
 
 class ZImagePixelSpace(Lumina2):
     def __init__(self, model_config, model_type=ModelType.FLOW, device=None):
-        super().__init__(model_config, model_type, device=device, unet_model=comfy.ldm.lumina.model.NextDiTPixelSpace)
+        BaseModel.__init__(self, model_config, model_type, device=device, unet_model=comfy.ldm.lumina.model.NextDiTPixelSpace)
+        self.memory_usage_factor_conds = ("ref_latents",)
 
     def extra_conds(self, **kwargs):
         out = super().extra_conds(**kwargs)
