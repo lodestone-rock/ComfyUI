@@ -1118,6 +1118,20 @@ class ZImage(Lumina2):
         hunyuan_detect = comfy.text_encoders.hunyuan_video.llama_detect(state_dict, "{}qwen3_4b.transformer.".format(pref))
         return supported_models_base.ClipTarget(comfy.text_encoders.z_image.ZImageTokenizer, comfy.text_encoders.z_image.te(**hunyuan_detect))
 
+class ZImagePixelSpace(ZImage):
+    unet_config = {
+        "image_model": "zimage_pixel",
+    }
+
+    # Pixel-space model: no spatial compression, operates on raw RGB patches.
+    latent_format = latent_formats.ZImagePixelSpace
+
+    # Much lower memory than latent-space models (no VAE, small patches).
+    memory_usage_factor = 0.05 # TODO: figure out the optimal value for this.
+
+    def get_model(self, state_dict, prefix="", device=None):
+        return model_base.ZImagePixelSpace(self, device=device)
+
 class WAN21_T2V(supported_models_base.BASE):
     unet_config = {
         "image_model": "wan2.1",

@@ -464,6 +464,34 @@ def detect_unet_config(state_dict, key_prefix, metadata=None):
             if sig_weight is not None:
                 dit_config["siglip_feat_dim"] = sig_weight.shape[0]
 
+            dec_cond_key = '{}dec_net.cond_embed.weight'.format(key_prefix)
+            if dec_cond_key in state_dict_keys:  # pixel-space variant
+                dit_config["image_model"] = "zimage_pixel"
+                w = state_dict[dec_cond_key]  # [patch_size^2 * decoder_hidden_size, dim]
+                dit_config["decoder_hidden_size"] = w.shape[0] // (dit_config["patch_size"] ** 2)
+                dit_config["decoder_num_res_blocks"] = count_blocks(
+                    state_dict_keys, '{}dec_net.res_blocks.'.format(key_prefix) + '{}.'
+                )
+                dit_config["decoder_max_freqs"] = 8  # fixed in NerfEmbedder
+                dit_config["in_channels"] = w.shape[1] // dit_config["dim"] if False else \
+                    state_dict['{}x_embedder.weight'.format(key_prefix)].shape[1] // (dit_config["patch_size"] ** 2)
+                if '{}__x0__'.format(key_prefix) in state_dict_keys:
+                    dit_config["use_x0"] = True
+
+            dec_cond_key = '{}dec_net.cond_embed.weight'.format(key_prefix)
+            if dec_cond_key in state_dict_keys:  # pixel-space variant
+                dit_config["image_model"] = "zimage_pixel"
+                w = state_dict[dec_cond_key]  # [patch_size^2 * decoder_hidden_size, dim]
+                dit_config["decoder_hidden_size"] = w.shape[0] // (dit_config["patch_size"] ** 2)
+                dit_config["decoder_num_res_blocks"] = count_blocks(
+                    state_dict_keys, '{}dec_net.res_blocks.'.format(key_prefix) + '{}.'
+                )
+                dit_config["decoder_max_freqs"] = 8  # fixed in NerfEmbedder
+                dit_config["in_channels"] = w.shape[1] // dit_config["dim"] if False else \
+                    state_dict['{}x_embedder.weight'.format(key_prefix)].shape[1] // (dit_config["patch_size"] ** 2)
+                if '{}__x0__'.format(key_prefix) in state_dict_keys:
+                    dit_config["use_x0"] = True
+
         return dit_config
 
     if '{}head.modulation'.format(key_prefix) in state_dict_keys:  # Wan 2.1
