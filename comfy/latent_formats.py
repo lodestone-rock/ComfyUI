@@ -778,22 +778,8 @@ class ChromaRadiance(LatentFormat):
         return latent
 
 
-class ZImagePixelSpace(LatentFormat):
+class ZImagePixelSpace(ChromaRadiance):
     """Pixel-space latent format for ZImage DCT variant.
     No VAE encoding/decoding — the model operates directly on RGB pixels.
     """
-    latent_channels = 3
-
-    def __init__(self):
-        self.latent_rgb_factors = [
-            # R    G    B
-            [ 1.0, 0.0, 0.0 ],
-            [ 0.0, 1.0, 0.0 ],
-            [ 0.0, 0.0, 1.0 ]
-        ]
-
-    def process_in(self, latent):
-        return latent
-
-    def process_out(self, latent):
-        return latent
+    pass
